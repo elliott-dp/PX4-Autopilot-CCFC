@@ -53,6 +53,13 @@ AutopilotTester::AutopilotTester() :
 
 AutopilotTester::~AutopilotTester()
 {
+	// Fence off `this`-capturing MAVSDK callbacks before members are destroyed
+	// (see CallbackGuard). Blocks until any in-flight callback has returned.
+	{
+		const std::lock_guard<std::mutex> lock(_callback_guard->mutex);
+		_callback_guard->alive = false;
+	}
+
 	// _events is only initialized in connect(). If the test fails before
 	// connect() completes (e.g., system discovery timeout), _events stays null.
 	if (_events) {
@@ -432,7 +439,14 @@ void AutopilotTester::check_mission_item_speed_above(int item_index, float min_s
 {
 
 	_telemetry->set_rate_velocity_ned(1);
-	_telemetry->subscribe_velocity_ned([item_index, min_speed_m_s, this](Telemetry::VelocityNed velocity) {
+	_telemetry->subscribe_velocity_ned([item_index, min_speed_m_s, guard = _callback_guard,
+	    this](Telemetry::VelocityNed velocity) {
+		const std::lock_guard<std::mutex> lock(guard->mutex);
+
+		if (!guard->alive) {
+			return;
+		}
+
 		float horizontal = std::hypot(velocity.north_m_s, velocity.east_m_s);
 		auto progress = _mission->mission_progress();
 
@@ -659,8 +673,14 @@ void AutopilotTester::check_tracks_mission_raw(float corridor_radius_m, bool rev
 	auto ct = get_coordinate_transformation();
 
 	_telemetry->set_rate_position_velocity_ned(5);
-	_telemetry->subscribe_position_velocity_ned([ct, mission_items, corridor_radius_m, reverse,
+	_telemetry->subscribe_position_velocity_ned([ct, mission_items, corridor_radius_m, reverse, guard = _callback_guard,
 	    this](Telemetry::PositionVelocityNed position_velocity_ned) {
+		const std::lock_guard<std::mutex> lock(guard->mutex);
+
+		if (!guard->alive) {
+			return;
+		}
+
 		auto progress = _mission_raw->mission_progress();
 
 
@@ -718,8 +738,14 @@ void AutopilotTester::check_tracks_mission(float corridor_radius_m)
 	auto ct = get_coordinate_transformation();
 
 	_telemetry->set_rate_position_velocity_ned(5);
-	_telemetry->subscribe_position_velocity_ned([ct, mission_items, corridor_radius_m,
+	_telemetry->subscribe_position_velocity_ned([ct, mission_items, corridor_radius_m, guard = _callback_guard,
 	    this](Telemetry::PositionVelocityNed position_velocity_ned) {
+		const std::lock_guard<std::mutex> lock(guard->mutex);
+
+		if (!guard->alive) {
+			return;
+		}
+
 		auto progress = _mission->mission_progress();
 
 		if (progress.current > 0 && progress.current < progress.total) {

@@ -53,6 +53,7 @@
 #include <functional>
 #include <iostream>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <thread>
 
@@ -297,6 +298,18 @@ private:
 	std::unique_ptr<mavsdk::Events> _events{};
 
 	Telemetry::GroundTruth _home{NAN, NAN, NAN};
+
+	// Guards `this`-capturing MAVSDK callbacks against use-after-destruction:
+	// MAVSDK queues user callbacks on its own thread, which keeps delivering
+	// while this object's members are destroyed (the Mavsdk instance, declared
+	// first, dies last). Callbacks must lock the guard and bail out once the
+	// destructor has flipped `alive`; the destructor's lock also waits for any
+	// in-flight callback to finish before member destruction starts.
+	struct CallbackGuard {
+		std::mutex mutex;
+		bool alive{true};
+	};
+	std::shared_ptr<CallbackGuard> _callback_guard{std::make_shared<CallbackGuard>()};
 
 	mavsdk::Telemetry::PositionVelocityNedHandle _check_altitude_handle{};
 
