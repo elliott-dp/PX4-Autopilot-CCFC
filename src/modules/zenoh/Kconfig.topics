@@ -137,6 +137,14 @@ menu "Zenoh publishers/subscribers"
 		bool "debug_vect"
 		default n
 
+	config ZENOH_PUBSUB_DETECT_AND_AVOID
+		bool "detect_and_avoid"
+		default n
+
+	config ZENOH_PUBSUB_DETECT_AND_AVOID_MOST_URGENT
+		bool "detect_and_avoid_most_urgent"
+		default n
+
 	config ZENOH_PUBSUB_DEVICE_INFORMATION
 		bool "device_information"
 		default n
@@ -243,6 +251,10 @@ menu "Zenoh publishers/subscribers"
 
 	config ZENOH_PUBSUB_FAILURE_DETECTOR_STATUS
 		bool "failure_detector_status"
+		default n
+
+	config ZENOH_PUBSUB_FAILURE_INJECTION
+		bool "failure_injection"
 		default n
 
 	config ZENOH_PUBSUB_FIDUCIAL_MARKER_POS_REPORT
@@ -533,6 +545,10 @@ menu "Zenoh publishers/subscribers"
 		bool "open_drone_id_arm_status"
 		default n
 
+	config ZENOH_PUBSUB_OPEN_DRONE_ID_BASIC_ID
+		bool "open_drone_id_basic_id"
+		default n
+
 	config ZENOH_PUBSUB_OPEN_DRONE_ID_OPERATOR_ID
 		bool "open_drone_id_operator_id"
 		default n
@@ -809,6 +825,14 @@ menu "Zenoh publishers/subscribers"
 		bool "sensors_status_imu"
 		default n
 
+	config ZENOH_PUBSUB_SETPOINT_CONFIG
+		bool "setpoint_config"
+		default n
+
+	config ZENOH_PUBSUB_SETPOINT_CONFIG_REPLY
+		bool "setpoint_config_reply"
+		default n
+
 	config ZENOH_PUBSUB_SYSTEM_POWER
 		bool "system_power"
 		default n
@@ -883,10 +907,6 @@ menu "Zenoh publishers/subscribers"
 
 	config ZENOH_PUBSUB_VEHICLE_AIR_DATA
 		bool "vehicle_air_data"
-		default n
-
-	config ZENOH_PUBSUB_VEHICLE_ANGULAR_ACCELERATION_SETPOINT
-		bool "vehicle_angular_acceleration_setpoint"
 		default n
 
 	config ZENOH_PUBSUB_VEHICLE_ANGULAR_VELOCITY
@@ -1064,6 +1084,8 @@ config ZENOH_PUBSUB_ALL_SELECTION
 	select ZENOH_PUBSUB_DEBUG_KEY_VALUE
 	select ZENOH_PUBSUB_DEBUG_VALUE
 	select ZENOH_PUBSUB_DEBUG_VECT
+	select ZENOH_PUBSUB_DETECT_AND_AVOID
+	select ZENOH_PUBSUB_DETECT_AND_AVOID_MOST_URGENT
 	select ZENOH_PUBSUB_DEVICE_INFORMATION
 	select ZENOH_PUBSUB_DIFFERENTIAL_PRESSURE
 	select ZENOH_PUBSUB_DISTANCE_SENSOR
@@ -1091,6 +1113,7 @@ config ZENOH_PUBSUB_ALL_SELECTION
 	select ZENOH_PUBSUB_EVENT
 	select ZENOH_PUBSUB_FAILSAFE_FLAGS
 	select ZENOH_PUBSUB_FAILURE_DETECTOR_STATUS
+	select ZENOH_PUBSUB_FAILURE_INJECTION
 	select ZENOH_PUBSUB_FIDUCIAL_MARKER_POS_REPORT
 	select ZENOH_PUBSUB_FIDUCIAL_MARKER_YAW_REPORT
 	select ZENOH_PUBSUB_FIGURE_EIGHT_STATUS
@@ -1163,6 +1186,7 @@ config ZENOH_PUBSUB_ALL_SELECTION
 	select ZENOH_PUBSUB_OFFBOARD_CONTROL_MODE
 	select ZENOH_PUBSUB_ONBOARD_COMPUTER_STATUS
 	select ZENOH_PUBSUB_OPEN_DRONE_ID_ARM_STATUS
+	select ZENOH_PUBSUB_OPEN_DRONE_ID_BASIC_ID
 	select ZENOH_PUBSUB_OPEN_DRONE_ID_OPERATOR_ID
 	select ZENOH_PUBSUB_OPEN_DRONE_ID_SELF_ID
 	select ZENOH_PUBSUB_OPEN_DRONE_ID_SYSTEM
@@ -1232,6 +1256,8 @@ config ZENOH_PUBSUB_ALL_SELECTION
 	select ZENOH_PUBSUB_SENSOR_UWB
 	select ZENOH_PUBSUB_SENSORS_STATUS
 	select ZENOH_PUBSUB_SENSORS_STATUS_IMU
+	select ZENOH_PUBSUB_SETPOINT_CONFIG
+	select ZENOH_PUBSUB_SETPOINT_CONFIG_REPLY
 	select ZENOH_PUBSUB_SYSTEM_POWER
 	select ZENOH_PUBSUB_TAKEOFF_STATUS
 	select ZENOH_PUBSUB_TARGET_GNSS
@@ -1251,7 +1277,6 @@ config ZENOH_PUBSUB_ALL_SELECTION
 	select ZENOH_PUBSUB_UNREGISTER_EXT_COMPONENT
 	select ZENOH_PUBSUB_VEHICLE_ACCELERATION
 	select ZENOH_PUBSUB_VEHICLE_AIR_DATA
-	select ZENOH_PUBSUB_VEHICLE_ANGULAR_ACCELERATION_SETPOINT
 	select ZENOH_PUBSUB_VEHICLE_ANGULAR_VELOCITY
 	select ZENOH_PUBSUB_VEHICLE_ATTITUDE
 	select ZENOH_PUBSUB_VEHICLE_ATTITUDE_SETPOINT
