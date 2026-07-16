@@ -1,0 +1,7 @@
+menuconfig MODULES_CC_TELEMETRY_PUBLISHER
+	bool "cc_telemetry_publisher"
+	default n
+	---help---
+		Enable support for cc_telemetry_publisher — the CCFC fork's
+		companion-computer telemetry curator (deterministic uORB field
+		selection + rate control feeding the MAVLink CC_* streams).

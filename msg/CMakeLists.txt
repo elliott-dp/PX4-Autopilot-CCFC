@@ -53,6 +53,14 @@ set(msg_files
 	CameraStatus.msg
 	CameraTrigger.msg
 	CanInterfaceStatus.msg
+	CcHealthReport.msg
+	CcSafetyStatus.msg
+	CcTelemetryActuator.msg
+	CcTelemetryEstimator.msg
+	CcTelemetryGps.msg
+	CcTelemetryImu.msg
+	CcTelemetryPower.msg
+	CcTelemetryState.msg
 	CellularStatus.msg
 	CollisionConstraints.msg
 	ControlAllocatorStatus.msg
