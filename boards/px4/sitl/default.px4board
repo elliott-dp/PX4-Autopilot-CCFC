@@ -37,7 +37,11 @@ CONFIG_MODULES_LOGGER=y
 CONFIG_MODULES_MAG_BIAS_ESTIMATOR=y
 CONFIG_MODULES_MANUAL_CONTROL=y
 CONFIG_MODULES_MAVLINK=y
-CONFIG_MAVLINK_DIALECT="development"
+# CCFC fork: build the mavlink module against the CC dialect
+# (ccfc_dialect/cc_dialect.xml, installed into the submodule by
+# ccfc_dialect/install.sh). Includes common.xml, so all standard
+# messages remain available.
+CONFIG_MAVLINK_DIALECT="cc_dialect"
 CONFIG_MODULES_MC_ATT_CONTROL=y
 CONFIG_MODULES_MC_AUTOTUNE_ATTITUDE_CONTROL=y
 CONFIG_MODULES_MC_HOVER_THRUST_ESTIMATOR=y

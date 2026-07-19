@@ -59,6 +59,18 @@
 #include "streams/ACTUATOR_OUTPUT_STATUS.hpp"
 #include "streams/ALTITUDE.hpp"
 #include "streams/ATTITUDE.hpp"
+// CCFC fork: companion-link streams (cc_dialect only; gated on the
+// generated message-id macros so common-dialect boards still build)
+#if defined(MAVLINK_MSG_ID_CC_TELEMETRY_STATE)
+# include "streams/CC_EVENT.hpp"
+# include "streams/CC_SAFETY_STATUS.hpp"
+# include "streams/CC_TELEMETRY_ACTUATOR.hpp"
+# include "streams/CC_TELEMETRY_ESTIMATOR.hpp"
+# include "streams/CC_TELEMETRY_GPS.hpp"
+# include "streams/CC_TELEMETRY_IMU.hpp"
+# include "streams/CC_TELEMETRY_POWER.hpp"
+# include "streams/CC_TELEMETRY_STATE.hpp"
+#endif // MAVLINK_MSG_ID_CC_TELEMETRY_STATE
 #include "streams/ATTITUDE_QUATERNION.hpp"
 #include "streams/ATTITUDE_TARGET.hpp"
 #include "streams/AUTOPILOT_VERSION.hpp"
@@ -295,6 +307,17 @@ static const StreamListItem streams_list[] = {
 #endif // ACTUATOR_OUTPUT_STATUS_HPP
 #if defined(ATTITUDE_HPP)
 	create_stream_list_item<MavlinkStreamAttitude>(),
+#if defined(MAVLINK_MSG_ID_CC_TELEMETRY_STATE)
+	// CCFC fork: companion-link streams
+	create_stream_list_item<MavlinkStreamCcEvent>(),
+	create_stream_list_item<MavlinkStreamCcSafetyStatus>(),
+	create_stream_list_item<MavlinkStreamCcTelemetryActuator>(),
+	create_stream_list_item<MavlinkStreamCcTelemetryEstimator>(),
+	create_stream_list_item<MavlinkStreamCcTelemetryGps>(),
+	create_stream_list_item<MavlinkStreamCcTelemetryImu>(),
+	create_stream_list_item<MavlinkStreamCcTelemetryPower>(),
+	create_stream_list_item<MavlinkStreamCcTelemetryState>(),
+#endif // MAVLINK_MSG_ID_CC_TELEMETRY_STATE
 #endif // ATTITUDE_HPP
 #if defined(ATTITUDE_QUATERNION_HPP)
 	create_stream_list_item<MavlinkStreamAttitudeQuaternion>(),

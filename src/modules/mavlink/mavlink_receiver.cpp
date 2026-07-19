@@ -157,6 +157,22 @@ MavlinkReceiver::handle_message(mavlink_message_t *msg)
 		handle_message_ping(msg);
 		break;
 
+#if defined(MAVLINK_MSG_ID_CC_HEALTH_REPORT)
+
+	// CCFC fork: companion-originated messages
+	case MAVLINK_MSG_ID_CC_HEALTH_REPORT:
+		handle_message_cc_health_report(msg);
+		break;
+
+	case MAVLINK_MSG_ID_CC_MISSION_CONTEXT:
+		handle_message_cc_mission_context(msg);
+		break;
+
+	case MAVLINK_MSG_ID_CC_AI_DIAGNOSTIC:
+		handle_message_cc_ai_diagnostic(msg);
+		break;
+#endif // MAVLINK_MSG_ID_CC_HEALTH_REPORT
+
 	case MAVLINK_MSG_ID_SET_MODE:
 		handle_message_set_mode(msg);
 		break;
@@ -1722,6 +1738,233 @@ MavlinkReceiver::handle_message_radio_status(mavlink_message_t *msg)
 
 		_radio_status_pub.publish(status);
 	}
+}
+
+#if defined(MAVLINK_MSG_ID_CC_HEALTH_REPORT)
+
+// CCFC fork ---------------------------------------------------------------
+// Validation gauntlet for companion-originated messages (spec §4.4).
+// Order is normative: source -> schema -> range -> sequence -> flood.
+// Every failing message increments exactly one counter and publishes
+// nothing. Counters print in `mavlink status` (ccfc_print_stats).
+
+#include <ccfc/cc_dialect_hash.h>
+
+bool
+MavlinkReceiver::ccfc_source_ok(const mavlink_message_t &msg)
+{
+	// spec §3.3: one vehicle = one system id; companion component only
+	if (msg.sysid != mavlink_system.sysid || msg.compid != MAV_COMP_ID_ONBOARD_COMPUTER) {
+		_ccfc_stats.bad_source++;
+		return false;
+	}
+
+	return true;
+}
+
+void
+MavlinkReceiver::handle_message_cc_health_report(mavlink_message_t *msg)
+{
+	if (!ccfc_source_ok(*msg)) { return; }
+
+	mavlink_cc_health_report_t report;
+	mavlink_msg_cc_health_report_decode(msg, &report);
+
+	// schema (spec §4.4 step 3) — one throttled warning per boot, not per msg
+	if (report.schema_version != 1) {
+		_ccfc_stats.bad_schema++;
+
+		if (!_ccfc_warned_schema) {
+			PX4_WARN("CCFC: dropping companion messages with unsupported schema %u", report.schema_version);
+			_ccfc_warned_schema = true;
+		}
+
+		return;
+	}
+
+	// ranges (step 4): severity <= 3, action <= 5, confidence <= 100
+	if (report.severity > 3 || report.recommended_action > 5 || report.confidence_percent > 100) {
+		_ccfc_stats.bad_range++;
+		return;
+	}
+
+	// sequence (step 5): strictly newer mod 2^32; duplicates dropped,
+	// gaps accumulated (first report after boot always accepted)
+	if (_ccfc_report_seq_valid) {
+		const int32_t diff = static_cast<int32_t>(report.sequence - _ccfc_report_last_seq);
+
+		if (diff <= 0) {
+			_ccfc_stats.dup_seq++;
+			return;
+		}
+
+		if (diff > 1) {
+			_ccfc_stats.missed_reports += static_cast<uint32_t>(diff - 1);
+		}
+	}
+
+	_ccfc_report_last_seq = report.sequence;
+	_ccfc_report_seq_valid = true;
+
+	// flood (step 6): > 20 reports/s -> drop excess (a compromised or buggy
+	// companion must not be able to spam the work queue)
+	const hrt_abstime now = hrt_absolute_time();
+
+	if (now - _ccfc_flood_window_start >= 1_s) {
+		_ccfc_flood_window_start = now;
+		_ccfc_flood_window_count = 0;
+	}
+
+	if (++_ccfc_flood_window_count > 20) {
+		_ccfc_stats.flood_dropped++;
+		return;
+	}
+
+	cc_health_report_s out{};
+	out.timestamp = now;
+	out.companion_timestamp_us = report.companion_timestamp_us;
+	out.sequence = report.sequence;
+	out.mission_id = report.mission_id;
+	out.companion_boot_id = report.companion_boot_id;
+	out.health_flags = report.health_flags;
+	out.detail_code = report.detail_code;
+	out.link_rtt_ms = report.link_rtt_ms;
+	out.telemetry_age_ms = report.telemetry_age_ms;
+	out.companion_loop_ms = report.companion_loop_ms;
+	out.dropped_rx_count = report.dropped_rx_count;
+	out.severity = report.severity;
+	out.recommended_action = report.recommended_action;
+	out.confidence_percent = report.confidence_percent;
+	out.schema_version = report.schema_version;
+	_cc_health_report_pub.publish(out);
+	_ccfc_stats.accepted_reports++;
+}
+
+void
+MavlinkReceiver::handle_message_cc_mission_context(mavlink_message_t *msg)
+{
+	if (!ccfc_source_ok(*msg)) { return; }
+
+	mavlink_cc_mission_context_t ctx;
+	mavlink_msg_cc_mission_context_decode(msg, &ctx);
+
+	if (ctx.schema_version != 1) {
+		_ccfc_stats.bad_schema++;
+
+		if (!_ccfc_warned_schema) {
+			PX4_WARN("CCFC: dropping companion messages with unsupported schema %u", ctx.schema_version);
+			_ccfc_warned_schema = true;
+		}
+
+		return;
+	}
+
+	// dialect identity (spec §7/§11 "Schema mismatch"): both ends must be
+	// generated from the same cc_dialect.xml
+	if (ctx.dialect_hash != CC_DIALECT_HASH) {
+		_ccfc_stats.bad_schema++;
+
+		if (!_ccfc_warned_schema) {
+			PX4_WARN("CCFC: companion dialect hash 0x%08" PRIx32 " != FC 0x%08" PRIx32 " — mission refused",
+				 ctx.dialect_hash, static_cast<uint32_t>(CC_DIALECT_HASH));
+			_ccfc_warned_schema = true;
+		}
+
+		return;
+	}
+
+	// vehicle identity (spec §7): must match the CC_VEHICLE_ID parameter;
+	// mismatch is a configuration error -> mission refused
+	if (_ccfc_param_vehicle_id == PARAM_INVALID) {
+		_ccfc_param_vehicle_id = param_find("CC_VEHICLE_ID");
+	}
+
+	int32_t vehicle_id = 0;
+
+	if (_ccfc_param_vehicle_id != PARAM_INVALID) {
+		param_get(_ccfc_param_vehicle_id, &vehicle_id);
+	}
+
+	if (ctx.vehicle_id != static_cast<uint32_t>(vehicle_id)) {
+		_ccfc_stats.bad_source++;
+
+		if (!_ccfc_warned_vehicle_id) {
+			PX4_WARN("CCFC: companion vehicle_id %" PRIu32 " != CC_VEHICLE_ID %" PRId32 " — mission refused",
+				 ctx.vehicle_id, vehicle_id);
+			_ccfc_warned_vehicle_id = true;
+		}
+
+		return;
+	}
+
+	cc_mission_context_s out{};
+	out.timestamp = hrt_absolute_time();
+	out.mission_id = ctx.mission_id;
+	out.cc_boot_id = ctx.cc_boot_id;
+	out.vehicle_id = ctx.vehicle_id;
+	out.dialect_hash = ctx.dialect_hash;
+	static_assert(sizeof(out.sw_version) == sizeof(ctx.sw_version), "sw_version size mismatch");
+	memcpy(out.sw_version, ctx.sw_version, sizeof(out.sw_version));
+	out.schema_version = ctx.schema_version;
+	_cc_mission_context_pub.publish(out);
+	_ccfc_stats.accepted_context++;
+}
+
+void
+MavlinkReceiver::handle_message_cc_ai_diagnostic(mavlink_message_t *msg)
+{
+	if (!ccfc_source_ok(*msg)) { return; }
+
+	mavlink_cc_ai_diagnostic_t diag;
+	mavlink_msg_cc_ai_diagnostic_decode(msg, &diag);
+
+	if (diag.schema_version != 1) {
+		_ccfc_stats.bad_schema++;
+
+		if (!_ccfc_warned_schema) {
+			PX4_WARN("CCFC: dropping companion messages with unsupported schema %u", diag.schema_version);
+			_ccfc_warned_schema = true;
+		}
+
+		return;
+	}
+
+	if (diag.severity > 3 || diag.subsystem > 11 || diag.confidence_percent > 100) {
+		_ccfc_stats.bad_range++;
+		return;
+	}
+
+	// log-only by contract (spec §4.4): published for ULog evidence, never
+	// consumed by any policy path
+	cc_ai_diagnostic_s out{};
+	out.timestamp = hrt_absolute_time();
+	out.companion_timestamp_us = diag.companion_timestamp_us;
+	out.sequence = diag.sequence;
+	out.value = diag.value;
+	out.limit = diag.limit;
+	out.detail_code = diag.detail_code;
+	out.subsystem = diag.subsystem;
+	out.severity = diag.severity;
+	out.confidence_percent = diag.confidence_percent;
+	out.schema_version = diag.schema_version;
+	_cc_ai_diagnostic_pub.publish(out);
+	_ccfc_stats.accepted_diagnostic++;
+}
+
+#endif // MAVLINK_MSG_ID_CC_HEALTH_REPORT
+
+void
+MavlinkReceiver::ccfc_print_stats() const
+{
+#if defined(MAVLINK_MSG_ID_CC_HEALTH_REPORT)
+	// single-line keys, parsed by the phase 3 harness — keep stable
+	printf("\tCCFC rx accepted: reports %" PRIu32 " context %" PRIu32 " diagnostic %" PRIu32 "\n",
+	       _ccfc_stats.accepted_reports, _ccfc_stats.accepted_context, _ccfc_stats.accepted_diagnostic);
+	printf("\tCCFC rx dropped: bad_source %" PRIu32 " bad_schema %" PRIu32 " bad_range %" PRIu32
+	       " dup_seq %" PRIu32 " flood %" PRIu32 " missed_reports %" PRIu32 "\n",
+	       _ccfc_stats.bad_source, _ccfc_stats.bad_schema, _ccfc_stats.bad_range,
+	       _ccfc_stats.dup_seq, _ccfc_stats.flood_dropped, _ccfc_stats.missed_reports);
+#endif // MAVLINK_MSG_ID_CC_HEALTH_REPORT
 }
 
 void

@@ -50,3 +50,17 @@ PARAM_DEFINE_INT32(CC_TEL_IMU_RATE, 50);
  * @max 50
  */
 PARAM_DEFINE_INT32(CC_TEL_ACT_RATE, 20);
+
+/**
+ * Vehicle identity for the companion link
+ *
+ * Static identity shared by FC and companion (spec section 7): the
+ * companion sends it in CC_MISSION_CONTEXT and the receiver refuses the
+ * mission handshake on mismatch (configuration error). Must equal the
+ * vehicle_id in the companion's cc-config.
+ *
+ * @group CC-FC Companion Link
+ * @min 1
+ * @max 2147483647
+ */
+PARAM_DEFINE_INT32(CC_VEHICLE_ID, 1);

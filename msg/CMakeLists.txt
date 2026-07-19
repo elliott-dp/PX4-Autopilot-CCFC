@@ -53,7 +53,9 @@ set(msg_files
 	CameraStatus.msg
 	CameraTrigger.msg
 	CanInterfaceStatus.msg
+	CcAiDiagnostic.msg
 	CcHealthReport.msg
+	CcMissionContext.msg
 	CcSafetyStatus.msg
 	CcTelemetryActuator.msg
 	CcTelemetryEstimator.msg

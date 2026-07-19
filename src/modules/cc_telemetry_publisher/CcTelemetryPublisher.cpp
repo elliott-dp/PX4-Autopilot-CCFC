@@ -166,7 +166,14 @@ void CcTelemetryPublisher::publish_state(const hrt_abstime now)
 	out.timestamp = now;
 	out.sequence = _state_stream.sequence++;
 	out.px4_boot_id = _px4_boot_id;
-	out.mission_id = 0; // provided by CC_MISSION_CONTEXT from Phase 3 on
+
+	cc_mission_context_s ctx;
+
+	if (_cc_mission_context_sub.update(&ctx)) {
+		_mission_id = ctx.mission_id;
+	}
+
+	out.mission_id = _mission_id;
 
 	// attitude / rates / local position: NaN marks a missing source
 	// (invariant 7) while the stream keeps its rate

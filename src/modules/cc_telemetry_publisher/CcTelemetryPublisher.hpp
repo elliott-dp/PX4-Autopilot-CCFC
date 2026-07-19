@@ -41,6 +41,7 @@
 #include <uORB/topics/cc_telemetry_imu.h>
 #include <uORB/topics/cc_telemetry_power.h>
 #include <uORB/topics/cc_telemetry_state.h>
+#include <uORB/topics/cc_mission_context.h>
 #include <uORB/topics/estimator_selector_status.h>
 #include <uORB/topics/estimator_status.h>
 #include <uORB/topics/estimator_status_flags.h>
@@ -151,6 +152,11 @@ private:
 	uint8_t _estimator_instance{0};
 
 	uORB::Subscription _actuator_motors_sub{ORB_ID(actuator_motors)};
+
+	// Phase 3: mission identity from the validated handshake (spec §4.4
+	// "echo into CC_TELEMETRY_STATE context"); 0 until a mission starts
+	uORB::Subscription _cc_mission_context_sub{ORB_ID(cc_mission_context)};
+	uint32_t _mission_id{0};
 
 	// ---- state -------------------------------------------------------
 	StreamState _state_stream{};

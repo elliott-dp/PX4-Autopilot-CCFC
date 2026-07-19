@@ -2978,6 +2978,9 @@ Mavlink::start(int argc, char *argv[])
 void
 Mavlink::display_status()
 {
+	// CCFC fork: companion-gauntlet counters (spec §4.4)
+	_receiver.ccfc_print_stats();
+
 #if !defined(CONSTRAINED_FLASH)
 	_receiver.enable_message_statistics();
 #endif // !CONSTRAINED_FLASH

@@ -31,6 +31,22 @@ mavlink start -x -u $udp_onboard_payload_port_local -r 4000 -f -m onboard -o $ud
 # Onboard link to gimbal
 mavlink start -x -u $udp_onboard_gimbal_port_local -r 400000 -f -m gimbal -o $udp_onboard_gimbal_port_remote
 
+# CCFC fork: companion-computer link (spec §2.2 UDP variant for SITL).
+# Onboard mode per spec §2.1; CC_* stream rates follow the AI_UART profile
+# (uORB decimation in cc_telemetry_publisher is the authority, these are
+# ceilings — spec §4.3). Harness listens on the remote port (udpin).
+udp_ccfc_port_local=$((24540+px4_instance))
+udp_ccfc_port_remote=$((24040+px4_instance))
+mavlink start -x -u $udp_ccfc_port_local -r 400000 -m onboard -o $udp_ccfc_port_remote
+mavlink stream -r 25 -s CC_TELEMETRY_STATE -u $udp_ccfc_port_local
+mavlink stream -r 50 -s CC_TELEMETRY_IMU -u $udp_ccfc_port_local
+mavlink stream -r 10 -s CC_TELEMETRY_POWER -u $udp_ccfc_port_local
+mavlink stream -r 5 -s CC_TELEMETRY_GPS -u $udp_ccfc_port_local
+mavlink stream -r 10 -s CC_TELEMETRY_ESTIMATOR -u $udp_ccfc_port_local
+mavlink stream -r 20 -s CC_TELEMETRY_ACTUATOR -u $udp_ccfc_port_local
+mavlink stream -r 25 -s CC_EVENT -u $udp_ccfc_port_local
+mavlink stream -r 25 -s CC_SAFETY_STATUS -u $udp_ccfc_port_local
+
 # To display for SIH sitl
 if [ "$PX4_SIMULATOR" = "sihsim" ]; then
 	udp_sihsim_port_local=$((19450+px4_instance))
