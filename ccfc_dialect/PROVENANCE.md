@@ -7,12 +7,15 @@
 
 The **single source of truth** is `drone-companion/cc-dialect/` (see its
 README for the change workflow). This fork carries copies only so it can
-build standalone: `install.sh` copies the XML into the mavlink submodule's
-`message_definitions/v1.0/` before each build (the submodule generates the
-C headers from it, selected via `CONFIG_MAVLINK_DIALECT="cc_dialect"`).
+build standalone: `src/modules/mavlink/CMakeLists.txt` copies the XML into
+the mavlink submodule's `message_definitions/v1.0/` at **configure time**
+(the submodule generates the C headers from it, selected via
+`CONFIG_MAVLINK_DIALECT="cc_dialect"`) — so every build path works,
+including CI, with no separate install step. (An earlier install.sh did
+this externally; it broke CI, which never ran it.)
 
 Guards against drift between the repos:
-- `install.sh` refuses to install if the XML hash and `cc_dialect_hash.h`
+- the CMake step FATAL_ERRORs if the XML sha256 and `cc_dialect_hash.h`
   disagree with each other;
 - the Phase 3 SITL harness asserts fork-copy sha == companion-copy sha;
 - the wire itself: the harness decodes with bindings generated from the

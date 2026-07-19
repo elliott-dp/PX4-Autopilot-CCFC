@@ -37,6 +37,29 @@ file(RELATIVE_PATH MAVLINK_GIT_DIR_RELATIVE ${CMAKE_SOURCE_DIR} ${MAVLINK_GIT_DI
 
 px4_add_git_submodule(TARGET git_mavlink_v2 PATH "${MAVLINK_GIT_DIR}")
 
+# CCFC fork: the cc_dialect XML is vendored at the repo root (single source
+# of truth lives in the drone-companion repo; see ccfc_dialect/PROVENANCE.md)
+# and must exist inside the mavlink submodule's message_definitions for the
+# generation step below. Doing the copy here — at configure time — covers
+# EVERY build path (CI, bare make, IDEs), unlike an external install script.
+# The SHA-256 gate keeps the XML and the compiled-in dialect-hash constant
+# (src/include/ccfc/cc_dialect_hash.h) in lockstep.
+if(CONFIG_MAVLINK_DIALECT STREQUAL "cc_dialect")
+	set(CCFC_DIALECT_XML "${PX4_SOURCE_DIR}/ccfc_dialect/cc_dialect.xml")
+	file(SHA256 "${CCFC_DIALECT_XML}" CCFC_DIALECT_SHA256)
+	file(READ "${PX4_SOURCE_DIR}/src/include/ccfc/cc_dialect_hash.h" CCFC_HASH_HEADER)
+	string(FIND "${CCFC_HASH_HEADER}" "${CCFC_DIALECT_SHA256}" CCFC_HASH_FOUND)
+
+	if(CCFC_HASH_FOUND EQUAL -1)
+		message(FATAL_ERROR "CCFC: ccfc_dialect/cc_dialect.xml (sha256 ${CCFC_DIALECT_SHA256}) "
+			"does not match src/include/ccfc/cc_dialect_hash.h — stale vendored copy; "
+			"re-vendor both from drone-companion/cc-dialect in one commit.")
+	endif()
+
+	configure_file("${CCFC_DIALECT_XML}"
+		"${MAVLINK_GIT_DIR}/message_definitions/v1.0/cc_dialect.xml" COPYONLY)
+endif()
+
 # always generate uAvionix dialect
 set(MAVLINK_DIALECT_UAVIONIX "uAvionix")
 add_custom_command(

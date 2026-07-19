@@ -313,32 +313,6 @@ private:
 
 	// ORB publications
 	uORB::Publication<airspeed_s>				_airspeed_pub{ORB_ID(airspeed)};
-#if defined(MAVLINK_MSG_ID_CC_HEALTH_REPORT)
-	// CCFC fork: accepted-message publications + gauntlet state/counters
-	uORB::Publication<cc_ai_diagnostic_s>			_cc_ai_diagnostic_pub{ORB_ID(cc_ai_diagnostic)};
-	uORB::Publication<cc_health_report_s>			_cc_health_report_pub{ORB_ID(cc_health_report)};
-	uORB::Publication<cc_mission_context_s>			_cc_mission_context_pub{ORB_ID(cc_mission_context)};
-
-	param_t		_ccfc_param_vehicle_id{PARAM_INVALID};
-	bool		_ccfc_report_seq_valid{false};
-	uint32_t	_ccfc_report_last_seq{0};
-	hrt_abstime	_ccfc_flood_window_start{0};
-	uint8_t		_ccfc_flood_window_count{0};
-	bool		_ccfc_warned_schema{false};
-	bool		_ccfc_warned_vehicle_id{false};
-
-	struct {
-		uint32_t accepted_reports{0};
-		uint32_t accepted_context{0};
-		uint32_t accepted_diagnostic{0};
-		uint32_t bad_source{0};
-		uint32_t bad_schema{0};
-		uint32_t bad_range{0};
-		uint32_t dup_seq{0};
-		uint32_t flood_dropped{0};
-		uint32_t missed_reports{0};
-	} _ccfc_stats{};
-#endif // MAVLINK_MSG_ID_CC_HEALTH_REPORT
 	uORB::Publication<battery_status_s>			_battery_pub{ORB_ID(battery_status)};
 	uORB::Publication<camera_status_s>			_camera_status_pub{ORB_ID(camera_status)};
 	uORB::Publication<cellular_status_s>			_cellular_status_pub{ORB_ID(cellular_status)};
@@ -371,6 +345,33 @@ private:
 	uORB::Publication<vehicle_odometry_s>			_mocap_odometry_pub{ORB_ID(vehicle_mocap_odometry)};
 	uORB::Publication<vehicle_odometry_s>			_visual_odometry_pub{ORB_ID(vehicle_visual_odometry)};
 	uORB::Publication<vehicle_rates_setpoint_s>		_rates_sp_pub{ORB_ID(vehicle_rates_setpoint)};
+
+#if defined(MAVLINK_MSG_ID_CC_HEALTH_REPORT)
+	// CCFC fork: accepted-message publications + gauntlet state/counters
+	uORB::Publication<cc_ai_diagnostic_s>			_cc_ai_diagnostic_pub{ORB_ID(cc_ai_diagnostic)};
+	uORB::Publication<cc_health_report_s>			_cc_health_report_pub{ORB_ID(cc_health_report)};
+	uORB::Publication<cc_mission_context_s>			_cc_mission_context_pub{ORB_ID(cc_mission_context)};
+
+	param_t		_ccfc_param_vehicle_id{PARAM_INVALID};
+	bool		_ccfc_report_seq_valid{false};
+	uint32_t	_ccfc_report_last_seq{0};
+	hrt_abstime	_ccfc_flood_window_start{0};
+	uint8_t		_ccfc_flood_window_count{0};
+	bool		_ccfc_warned_schema{false};
+	bool		_ccfc_warned_vehicle_id{false};
+
+	struct {
+		uint32_t accepted_reports{0};
+		uint32_t accepted_context{0};
+		uint32_t accepted_diagnostic{0};
+		uint32_t bad_source{0};
+		uint32_t bad_schema{0};
+		uint32_t bad_range{0};
+		uint32_t dup_seq{0};
+		uint32_t flood_dropped{0};
+		uint32_t missed_reports{0};
+	} _ccfc_stats{};
+#endif // MAVLINK_MSG_ID_CC_HEALTH_REPORT
 
 #if !defined(CONSTRAINED_FLASH)
 	uORB::Publication<debug_array_s>			_debug_array_pub {ORB_ID(debug_array)};
