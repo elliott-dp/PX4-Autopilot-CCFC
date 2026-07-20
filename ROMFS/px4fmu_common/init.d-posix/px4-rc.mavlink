@@ -1,6 +1,15 @@
 #!/bin/sh
 # shellcheck disable=SC2154
 
+# CCFC fork: default every instance to MAVLink 2 output so streams and
+# heartbeats leave the boot in v2 (the CC link is MAVLink 2 by contract,
+# spec §3) instead of starting v1 and upgrading on first v2 RX.
+# NOTE: this does NOT change PX4's TIMESYNC reply, which the shared timesync
+# module still emits as MAVLink 1 from the receiver thread regardless of this
+# param (verified against SITL). The companion decoder accepts both framings;
+# CC_* telemetry (24-bit IDs) is MAVLink 2 exclusively by construction.
+param set MAV_PROTO_VER 2
+
 udp_offboard_port_local=$((14580+px4_instance))
 udp_offboard_port_remote=$((14540+px4_instance))
 [ "$px4_instance" -gt 9 ] && udp_offboard_port_remote=14549 # use the same ports for more than 10 instances to avoid port overlaps
@@ -37,7 +46,13 @@ mavlink start -x -u $udp_onboard_gimbal_port_local -r 400000 -f -m gimbal -o $ud
 # ceilings — spec §4.3). Harness listens on the remote port (udpin).
 udp_ccfc_port_local=$((24540+px4_instance))
 udp_ccfc_port_remote=$((24040+px4_instance))
-mavlink start -x -u $udp_ccfc_port_local -r 400000 -m onboard -o $udp_ccfc_port_remote
+# custom mode = no default stream set: the wire carries ONLY the CC_*
+# contract + HEARTBEAT (spec §8 budget); onboard mode's default streams
+# from the newer submodule dialect were noise our pinned dialect can't
+# decode (and PX4's own 10 Hz TIMESYNC requests are unnecessary — the
+# companion drives the sync, PX4 answers)
+mavlink start -x -u $udp_ccfc_port_local -r 400000 -m custom -o $udp_ccfc_port_remote
+mavlink stream -r 1 -s HEARTBEAT -u $udp_ccfc_port_local
 mavlink stream -r 25 -s CC_TELEMETRY_STATE -u $udp_ccfc_port_local
 mavlink stream -r 50 -s CC_TELEMETRY_IMU -u $udp_ccfc_port_local
 mavlink stream -r 10 -s CC_TELEMETRY_POWER -u $udp_ccfc_port_local
