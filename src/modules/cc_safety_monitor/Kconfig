@@ -1,0 +1,9 @@
+menuconfig MODULES_CC_SAFETY_MONITOR
+	bool "cc_safety_monitor"
+	default n
+	---help---
+		Enable support for cc_safety_monitor — the CCFC fork's deterministic
+		companion safety policy core (spec §4.5). Consumes validated
+		cc_health_report, runs the companion state machine + policy table, and
+		issues at most one conservative Hold/Land/RTL / exit-Offboard
+		vehicle_command per state transition. Parameterized via CC_MON_*.

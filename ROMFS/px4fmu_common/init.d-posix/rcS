@@ -294,6 +294,11 @@ navigator start
 # Publishes whether or not a companion is attached (invariant 2).
 cc_telemetry_publisher start
 
+# CCFC fork: deterministic companion safety policy core (spec §4.5).
+# Consumes validated cc_health_report, publishes cc_safety_status, and issues
+# conservative Hold/Land/RTL / exit-Offboard commands per its policy table.
+cc_safety_monitor start
+
 # Try to start the UXRCE-DDS Client with UDP transport if module exists
 uxrce_dds_ns=""
 if [ "$px4_instance" -ne "0" ]
