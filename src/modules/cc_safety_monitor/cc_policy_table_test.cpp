@@ -26,12 +26,18 @@ static const char *name(MonitorAction a)
 {
 	switch (a) {
 	case MonitorAction::None:          return "None";
+
 	case MonitorAction::Warn:          return "Warn";
+
 	case MonitorAction::BlockOffboard: return "BlockOffboard";
+
 	case MonitorAction::Hold:          return "Hold";
+
 	case MonitorAction::Land:          return "Land";
+
 	case MonitorAction::Rtl:           return "Rtl";
 	}
+
 	return "?";
 }
 
@@ -146,14 +152,19 @@ int main()
 	// ======================================================================
 	// State machine (hysteresis / staleness / reboot)
 	// ======================================================================
-	auto sname = [](CompanionState s) -> const char * {
+	auto sname = [](CompanionState s) {
 		switch (s) {
 		case CompanionState::Unknown:  return "Unknown";
+
 		case CompanionState::Ok:       return "Ok";
+
 		case CompanionState::Warn:     return "Warn";
+
 		case CompanionState::Critical: return "Critical";
+
 		case CompanionState::Stale:    return "Stale";
 		}
+
 		return "?";
 	};
 #define EXPECT_STATE(desc, got, want) do {                                     \
@@ -166,45 +177,75 @@ int main()
 
 	const uint32_t OKN = 3; // CC_MON_OK_COUNT
 
-	{ MonitorStateMachine m;
-	  EXPECT_STATE("SM: first report OK -> Ok immediately", m.on_report(SEVERITY_OK, OKN), CompanionState::Ok); }
-	{ MonitorStateMachine m;
-	  EXPECT_STATE("SM: first report CRITICAL -> Critical", m.on_report(SEVERITY_CRITICAL, OKN), CompanionState::Critical); }
-	{ MonitorStateMachine m; m.on_report(SEVERITY_OK, OKN);
-	  EXPECT_STATE("SM: Ok -> WARN escalates immediately", m.on_report(SEVERITY_WARN, OKN), CompanionState::Warn); }
-	{ MonitorStateMachine m; m.on_report(SEVERITY_WARN, OKN);
-	  EXPECT_STATE("SM: Warn -> CRITICAL escalates", m.on_report(SEVERITY_CRITICAL, OKN), CompanionState::Critical); }
-	{ MonitorStateMachine m; m.on_report(SEVERITY_CRITICAL, OKN);
-	  m.on_report(SEVERITY_OK, OKN); m.on_report(SEVERITY_OK, OKN);
-	  EXPECT_STATE("SM: Critical + 2 OK (<count) stays Critical", m.state(), CompanionState::Critical);
-	  EXPECT_STATE("SM: Critical + 3rd OK -> Ok", m.on_report(SEVERITY_OK, OKN), CompanionState::Ok); }
-	{ MonitorStateMachine m; m.on_report(SEVERITY_CRITICAL, OKN);
-	  m.on_report(SEVERITY_OK, OKN); m.on_report(SEVERITY_OK, OKN);
-	  m.on_report(SEVERITY_WARN, OKN); // interrupts the OK streak, stays Critical
-	  EXPECT_STATE("SM: WARN interrupts recovery streak (stays Critical)", m.state(), CompanionState::Critical);
-	  m.on_report(SEVERITY_OK, OKN); m.on_report(SEVERITY_OK, OKN);
-	  EXPECT_STATE("SM: Critical + fresh 3 OK -> Ok", m.on_report(SEVERITY_OK, OKN), CompanionState::Ok); }
-	{ MonitorStateMachine m; m.on_report(SEVERITY_CRITICAL, OKN);
-	  EXPECT_STATE("SM: Critical + WARN never relaxes to Warn", m.on_report(SEVERITY_WARN, OKN), CompanionState::Critical); }
-	{ MonitorStateMachine m; m.on_report(SEVERITY_WARN, OKN);
-	  m.on_report(SEVERITY_OK, OKN); m.on_report(SEVERITY_OK, OKN);
-	  EXPECT_STATE("SM: Warn + 3 OK -> Ok", m.on_report(SEVERITY_OK, OKN), CompanionState::Ok); }
-	{ MonitorStateMachine m; m.on_report(SEVERITY_OK, OKN);
-	  EXPECT_STATE("SM: timeout -> Stale", m.on_timeout(), CompanionState::Stale); }
-	{ MonitorStateMachine m; m.on_timeout();
-	  m.on_report(SEVERITY_OK, OKN); m.on_report(SEVERITY_OK, OKN);
-	  EXPECT_STATE("SM: Stale + 2 OK stays Stale", m.state(), CompanionState::Stale);
-	  EXPECT_STATE("SM: Stale + 3rd OK -> Ok", m.on_report(SEVERITY_OK, OKN), CompanionState::Ok); }
-	{ MonitorStateMachine m; m.on_timeout();
-	  EXPECT_STATE("SM: Stale + WARN stays Stale (exit needs OKs)", m.on_report(SEVERITY_WARN, OKN), CompanionState::Stale); }
-	{ MonitorStateMachine m; m.on_timeout();
-	  EXPECT_STATE("SM: Stale + CRITICAL escalates to Critical", m.on_report(SEVERITY_CRITICAL, OKN), CompanionState::Critical); }
-	{ MonitorStateMachine m; m.on_report(SEVERITY_CRITICAL, OKN); m.reset();
-	  EXPECT_STATE("SM: reboot resets to Unknown", m.state(), CompanionState::Unknown); }
-	{ MonitorStateMachine m; m.on_report(SEVERITY_CRITICAL, OKN);
-	  EXPECT_STATE("SM: ok_count=1, Critical + single OK -> Ok", m.on_report(SEVERITY_OK, 1), CompanionState::Ok); }
-	{ MonitorStateMachine m; m.on_report(SEVERITY_OK, OKN);
-	  EXPECT_STATE("SM: self-declared STALE severity -> Stale", m.on_report(SEVERITY_STALE, OKN), CompanionState::Stale); }
+	{
+		MonitorStateMachine m;
+		EXPECT_STATE("SM: first report OK -> Ok immediately", m.on_report(SEVERITY_OK, OKN), CompanionState::Ok);
+	}
+	{
+		MonitorStateMachine m;
+		EXPECT_STATE("SM: first report CRITICAL -> Critical", m.on_report(SEVERITY_CRITICAL, OKN), CompanionState::Critical);
+	}
+	{
+		MonitorStateMachine m; m.on_report(SEVERITY_OK, OKN);
+		EXPECT_STATE("SM: Ok -> WARN escalates immediately", m.on_report(SEVERITY_WARN, OKN), CompanionState::Warn);
+	}
+	{
+		MonitorStateMachine m; m.on_report(SEVERITY_WARN, OKN);
+		EXPECT_STATE("SM: Warn -> CRITICAL escalates", m.on_report(SEVERITY_CRITICAL, OKN), CompanionState::Critical);
+	}
+	{
+		MonitorStateMachine m; m.on_report(SEVERITY_CRITICAL, OKN);
+		m.on_report(SEVERITY_OK, OKN); m.on_report(SEVERITY_OK, OKN);
+		EXPECT_STATE("SM: Critical + 2 OK (<count) stays Critical", m.state(), CompanionState::Critical);
+		EXPECT_STATE("SM: Critical + 3rd OK -> Ok", m.on_report(SEVERITY_OK, OKN), CompanionState::Ok);
+	}
+	{
+		MonitorStateMachine m; m.on_report(SEVERITY_CRITICAL, OKN);
+		m.on_report(SEVERITY_OK, OKN); m.on_report(SEVERITY_OK, OKN);
+		m.on_report(SEVERITY_WARN, OKN); // interrupts the OK streak, stays Critical
+		EXPECT_STATE("SM: WARN interrupts recovery streak (stays Critical)", m.state(), CompanionState::Critical);
+		m.on_report(SEVERITY_OK, OKN); m.on_report(SEVERITY_OK, OKN);
+		EXPECT_STATE("SM: Critical + fresh 3 OK -> Ok", m.on_report(SEVERITY_OK, OKN), CompanionState::Ok);
+	}
+	{
+		MonitorStateMachine m; m.on_report(SEVERITY_CRITICAL, OKN);
+		EXPECT_STATE("SM: Critical + WARN never relaxes to Warn", m.on_report(SEVERITY_WARN, OKN), CompanionState::Critical);
+	}
+	{
+		MonitorStateMachine m; m.on_report(SEVERITY_WARN, OKN);
+		m.on_report(SEVERITY_OK, OKN); m.on_report(SEVERITY_OK, OKN);
+		EXPECT_STATE("SM: Warn + 3 OK -> Ok", m.on_report(SEVERITY_OK, OKN), CompanionState::Ok);
+	}
+	{
+		MonitorStateMachine m; m.on_report(SEVERITY_OK, OKN);
+		EXPECT_STATE("SM: timeout -> Stale", m.on_timeout(), CompanionState::Stale);
+	}
+	{
+		MonitorStateMachine m; m.on_timeout();
+		m.on_report(SEVERITY_OK, OKN); m.on_report(SEVERITY_OK, OKN);
+		EXPECT_STATE("SM: Stale + 2 OK stays Stale", m.state(), CompanionState::Stale);
+		EXPECT_STATE("SM: Stale + 3rd OK -> Ok", m.on_report(SEVERITY_OK, OKN), CompanionState::Ok);
+	}
+	{
+		MonitorStateMachine m; m.on_timeout();
+		EXPECT_STATE("SM: Stale + WARN stays Stale (exit needs OKs)", m.on_report(SEVERITY_WARN, OKN), CompanionState::Stale);
+	}
+	{
+		MonitorStateMachine m; m.on_timeout();
+		EXPECT_STATE("SM: Stale + CRITICAL escalates to Critical", m.on_report(SEVERITY_CRITICAL, OKN), CompanionState::Critical);
+	}
+	{
+		MonitorStateMachine m; m.on_report(SEVERITY_CRITICAL, OKN); m.reset();
+		EXPECT_STATE("SM: reboot resets to Unknown", m.state(), CompanionState::Unknown);
+	}
+	{
+		MonitorStateMachine m; m.on_report(SEVERITY_CRITICAL, OKN);
+		EXPECT_STATE("SM: ok_count=1, Critical + single OK -> Ok", m.on_report(SEVERITY_OK, 1), CompanionState::Ok);
+	}
+	{
+		MonitorStateMachine m; m.on_report(SEVERITY_OK, OKN);
+		EXPECT_STATE("SM: self-declared STALE severity -> Stale", m.on_report(SEVERITY_STALE, OKN), CompanionState::Stale);
+	}
 
 	// --- Invariant: every reachable output is conservative ------------------
 	// (Exhaustive sweep: no (state,recommend,ctx,param) combination can produce
@@ -213,7 +254,9 @@ int main()
 	{
 		bool all_conservative = true;
 		const CompanionState states[] = { CompanionState::Unknown, CompanionState::Ok,
-			CompanionState::Warn, CompanionState::Critical, CompanionState::Stale };
+						  CompanionState::Warn, CompanionState::Critical, CompanionState::Stale
+						};
+
 		for (CompanionState st : states) {
 			for (uint8_t rec = 0; rec <= 5; ++rec) {
 				for (int oi = 0; oi < 2; ++oi) {
@@ -222,6 +265,7 @@ int main()
 							for (int32_t act = -1; act <= 4; ++act) {
 								FlightContext c{ oi != 0, ai != 0, ai != 0 };
 								MonitorAction a = decide_action(st, rec, c, P(ri != 0, act, act));
+
 								// conservative set only (no arm/takeoff/offboard-enter exists)
 								if (!(a == MonitorAction::None || a == MonitorAction::Warn ||
 								      a == MonitorAction::BlockOffboard || a == MonitorAction::Hold ||
@@ -234,8 +278,11 @@ int main()
 				}
 			}
 		}
+
 		++g_checks;
+
 		if (!all_conservative) { ++g_fail; std::printf("FAIL  exhaustive sweep: non-conservative output\n"); }
+
 		else { std::printf("ok    exhaustive sweep: all outputs conservative\n"); }
 	}
 

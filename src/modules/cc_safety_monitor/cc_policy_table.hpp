@@ -20,7 +20,8 @@
 
 #include <cstdint>
 
-namespace ccfc {
+namespace ccfc
+{
 
 // Mirrors CC_COMPANION_STATE in cc_dialect.xml.
 enum class CompanionState : uint8_t {
@@ -76,9 +77,13 @@ constexpr MonitorAction act_param_to_action(int32_t v)
 {
 	switch (v) {
 	case 0:  return MonitorAction::Warn;
+
 	case 1:  return MonitorAction::Hold;
+
 	case 2:  return MonitorAction::Land;
+
 	case 3:  return MonitorAction::Rtl;
+
 	default: return MonitorAction::Hold;
 	}
 }
@@ -98,7 +103,7 @@ constexpr MonitorAction decide_action(CompanionState state,
 		// wins over the recommendation). On the ground: never auto-act —
 		// gate autonomy arming and warn (BlockOffboard carries both).
 		return ctx.armed_airborne() ? act_param_to_action(params.crit_act)
-					    : MonitorAction::BlockOffboard;
+		       : MonitorAction::BlockOffboard;
 
 	case CompanionState::Warn:
 		// Never auto-act on WARN (spec): warn only, whatever the
@@ -106,6 +111,7 @@ constexpr MonitorAction decide_action(CompanionState state,
 		return MonitorAction::Warn;
 
 	case CompanionState::Stale:
+
 		// In Offboard while flying: execute the STALE parameter action.
 		// Otherwise block Offboard entry iff CC_MON_REQ_OFFB.
 		if (ctx.armed_airborne() && ctx.in_offboard) {
@@ -113,7 +119,7 @@ constexpr MonitorAction decide_action(CompanionState state,
 		}
 
 		return params.require_offboard ? MonitorAction::BlockOffboard
-					       : MonitorAction::None;
+		       : MonitorAction::None;
 
 	case CompanionState::Ok:
 		// Honor an explicit companion BLOCK_OFFBOARD recommendation even
@@ -126,7 +132,7 @@ constexpr MonitorAction decide_action(CompanionState state,
 	default:
 		// Boot state: block Offboard entry iff required.
 		return params.require_offboard ? MonitorAction::BlockOffboard
-					       : MonitorAction::None;
+		       : MonitorAction::None;
 	}
 }
 

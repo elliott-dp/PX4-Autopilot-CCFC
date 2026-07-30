@@ -58,7 +58,9 @@ void CcSafetyMonitor::command_mode(MonitorAction action)
 
 	switch (action) {
 	case MonitorAction::Land: sub_mode = PX4_CUSTOM_SUB_MODE_AUTO_LAND;   break;
+
 	case MonitorAction::Rtl:  sub_mode = PX4_CUSTOM_SUB_MODE_AUTO_RTL;    break;
+
 	case MonitorAction::Hold:
 	default:                  sub_mode = PX4_CUSTOM_SUB_MODE_AUTO_LOITER; break;
 	}

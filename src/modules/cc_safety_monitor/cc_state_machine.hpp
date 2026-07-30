@@ -26,7 +26,8 @@
 
 #include "cc_policy_table.hpp"
 
-namespace ccfc {
+namespace ccfc
+{
 
 // CC_SEVERITY values (report input).
 static constexpr uint8_t SEVERITY_OK       = 0;
@@ -59,11 +60,13 @@ public:
 
 		case SEVERITY_WARN:
 			_ok_streak = 0;
+
 			// escalate to WARN only from OK/UNKNOWN; never relax
 			// CRITICAL or leave STALE on a WARN.
 			if (_state != CompanionState::Critical && _state != CompanionState::Stale) {
 				_state = CompanionState::Warn;
 			}
+
 			break;
 
 		case SEVERITY_OK:
@@ -72,11 +75,14 @@ public:
 				// first report (or already OK): OK immediately.
 				_state = CompanionState::Ok;
 				_ok_streak = need;
+
 			} else {
 				// recovering from WARN/CRITICAL/STALE: need a run of OKs.
 				if (_ok_streak < need) { _ok_streak++; }
+
 				if (_ok_streak >= need) { _state = CompanionState::Ok; }
 			}
+
 			break;
 		}
 
